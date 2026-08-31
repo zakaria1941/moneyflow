@@ -5,7 +5,15 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
+  type?:
+    | 'default'
+    | 'title'
+    | 'defaultSemiBold'
+    | 'subtitle'
+    | 'link'
+    | 'sectionTitle'
+    | 'cardTitle'
+    | 'caption';
 };
 
 export function ThemedText({
@@ -16,6 +24,8 @@ export function ThemedText({
   ...rest
 }: ThemedTextProps) {
   const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+  const tint = useThemeColor({}, 'tint');
+  const muted = useThemeColor({}, 'muted');
 
   return (
     <Text
@@ -25,7 +35,13 @@ export function ThemedText({
         type === 'title' ? styles.title : undefined,
         type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
         type === 'subtitle' ? styles.subtitle : undefined,
-        type === 'link' ? styles.link : undefined,
+        type === 'link' ? [styles.link, { color: tint }] : undefined,
+        // Small-caps section label ("THIS MONTH", "RECENT TRANSACTIONS") — used instead
+        // of wrapping every group of content in its own bordered card, so the screen
+        // stays organized without turning into a stack of boxes.
+        type === 'sectionTitle' ? [styles.sectionTitle, { color: muted }] : undefined,
+        type === 'cardTitle' ? styles.cardTitle : undefined,
+        type === 'caption' ? [styles.caption, { color: muted }] : undefined,
         style,
       ]}
       {...rest}
@@ -44,9 +60,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    lineHeight: 32,
+    fontSize: 28,
+    fontWeight: '700',
+    lineHeight: 34,
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 20,
@@ -55,6 +72,20 @@ const styles = StyleSheet.create({
   link: {
     lineHeight: 30,
     fontSize: 16,
-    color: '#0a7ea4',
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  caption: {
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

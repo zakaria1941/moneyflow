@@ -1,0 +1,90 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Phase 6A: user profiles. Phase 6B: accounts. Phase 6C: transactions.
+    // Phase 6D: category groups, categories, category-month budget rows, and goals.
+    // Phase 8: payees. Phase 9: real goal CRUD — all nested under the owning user.
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid;
+      allow update: if request.auth != null && request.auth.uid == uid;
+      allow delete: if false;
+
+      // Accounts belong to exactly one user, identified by the uid segment in the
+      // path itself — ownership is fully enforced by that path match, so no
+      // additional per-field checks are needed here (kept intentionally minimal,
+      // per "update rules only as necessary for Accounts").
+      match /accounts/{accountId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null && request.auth.uid == uid;
+        allow update: if request.auth != null && request.auth.uid == uid;
+        allow delete: if false;
+      }
+
+      // Transactions belong to exactly one user, same path-based ownership as
+      // accounts. Unlike accounts, the UI has a real hard-delete action (deleting a
+      // transaction reverses its balance/activity effect and removes the record),
+      // so delete is allowed here.
+      match /transactions/{transactionId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null && request.auth.uid == uid;
+        allow update: if request.auth != null && request.auth.uid == uid;
+        allow delete: if request.auth != null && request.auth.uid == uid;
+      }
+
+      // Category groups, categories, and their per-month budget rows, same path-based
+      // ownership as accounts/transactions. Categories are never hard-deleted (the
+      // management UI sets `hidden` via update instead, to preserve historical
+      // CategoryMonth rows and existing transactions' categoryId references), so that
+      // stays blocked. Groups now have a real hard-delete action — the management
+      // screen only allows removing a group once it has no categories left in it
+      // (checked client-side, same as every other business-rule check in this app),
+      // so delete is safe to allow at the rules level like transactions.
+      match /categoryGroups/{groupId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null && request.auth.uid == uid;
+        allow update: if request.auth != null && request.auth.uid == uid;
+        allow delete: if request.auth != null && request.auth.uid == uid;
+      }
+      match /categories/{categoryId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null && request.auth.uid == uid;
+        allow update: if request.auth != null && request.auth.uid == uid;
+        allow delete: if false;
+      }
+      match /categoryMonths/{categoryMonthId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null && request.auth.uid == uid;
+        allow update: if request.auth != null && request.auth.uid == uid;
+        allow delete: if false;
+      }
+      // Goals are just a target the user set for themselves — nothing else references a
+      // goal by id (unlike categories/payees, which transactions reference), so removing
+      // one orphans nothing. The management UI has a real remove action, so delete is
+      // allowed here, same as transactions/categoryGroups.
+      match /goals/{goalId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null && request.auth.uid == uid;
+        allow update: if request.auth != null && request.auth.uid == uid;
+        allow delete: if request.auth != null && request.auth.uid == uid;
+      }
+
+      // Payees, same path-based ownership. Never hard-deleted — the management UI
+      // sets `archived` via update instead, so existing transactions keep resolving
+      // their payeeId to a real name.
+      match /payees/{payeeId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null && request.auth.uid == uid;
+        allow update: if request.auth != null && request.auth.uid == uid;
+        allow delete: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
